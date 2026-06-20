@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Employee Dashboard</title>
+    <style>
+        body {
+             font-family: Arial, sans-serif;
+              margin: 30px;
+               background: #f4f4f9;
+               background-image: url(cadt.png);
+                  background-attachment: fixed;
+                background-repeat: no-repeat;
+               background-position: center;
+               background-size: cover;
+             }
+        h1 { 
+            color: #333; }
+        .header {
+             display: flex; 
+             justify-content: space-between; 
+             align-items: center;
+              margin-bottom: 20px;
+            
+              
+             }
+        .search-box {
+             margin: 20px 0;
+
+             }
+        input, button { 
+            padding: 8px 12px; 
+            font-size: 16px; 
+            margin: 5px;
+           
+         }
+        button {
+             cursor: pointer;
+               border-radius: 5px;
+            background-color: #5758BB;
+             
+             }
+        table { 
+            width: 100%;
+             border-collapse: collapse; 
+             background: white;
+             }
+        th, td {
+             border: 1px solid #ddd; 
+             padding: 10px;
+              text-align: left;
+             }
+        th { 
+            background: #007bff;
+             color: white; 
+            }
+        .error { 
+            color: red;
+         }
+        .loading {
+             color: #666; 
+            }
+        .logout-btn { 
+            background: #dc3545;
+             color: white; 
+             border: none;
+              padding: 8px 15px; 
+              border-radius: 5px; 
+            }
+        .logout-btn:hover {
+             background: #c82333;
+             }
+           
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Employee Dashboard</h1>
+        <div>
+            <span >Welcome, <span id="usernameDisplay"></span></span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    <div class="search-box">
+        <input type="text" id="searchName" placeholder="Enter name (partial or full)" size="30">
+        <button onclick="search()">Search</button>
+        <button onclick="loadAll()">Show All</button>
+    </div>
+    <div id="result">Loading...</div>
+
+    <script>
+        async function loadAll() {
+            showLoading();
+            try {
+                const res = await fetch('/api/employees');
+                const data = await res.json();
+                display(data);
+            } catch(err) {
+                showError(err.message);
+            }
+        }
+        async function search() {
+            const name = document.getElementById('searchName').value.trim();
+            if (!name) return loadAll();
+            showLoading();
+            try {
+                const res = await fetch(`/api/search?name=${encodeURIComponent(name)}`);
+                const data = await res.json();
+                if (data.length === 0) {
+                    document.getElementById('result').innerHTML = `<p class="error">No employee found for "${name}".</p>`;
+                } else {
+                    display(data);
+                }
+            } catch(err) {
+                showError(err.message);
+            }
+        }
+        function display(employees) {
+            if (!employees.length) {
+                document.getElementById('result').innerHTML = '<p class="error">No employees in database.</p>';
+                return;
+            }
+            let html = '<table><th>ID</th><th>Name</th><th>Age</th><th>Position</th><th>Salary</th><th>Email</th></tr>';
+            employees.forEach(e => {
+                html += `<tr>
+                            <td>${e.id}</td>
+                            <td>${escapeHtml(e.name)}</td>
+                            <td>${e.age}</td>
+                            <td>${escapeHtml(e.position)}</td>
+                            <td>$${e.salary.toFixed(2)}</td>
+                            <td>${escapeHtml(e.email)}</td>
+                         </tr>`;
+            });
+            html += '</table>';
+            document.getElementById('result').innerHTML = html;
+        }
+        function showLoading() {
+            document.getElementById('result').innerHTML = '<p class="loading">Loading...</p>';
+        }
+        function showError(msg) {
+            document.getElementById('result').innerHTML = `<p class="error">Error: ${msg}</p>`;
+        }
+        function escapeHtml(str) {
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => window.location.href = '/login')
+                .catch(() => window.location.href = '/login');
+        }
+        window.onload = loadAll;
+    </script>
+</body>
+</html>
